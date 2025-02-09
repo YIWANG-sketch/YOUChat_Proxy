@@ -1,5 +1,7 @@
 import {EventEmitter} from "events";
-import {connect} from "puppeteer-real-browser";
+import puppeteer from 'puppeteer-core';
+import puppeteerExtra from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import {v4 as uuidV4} from "uuid";
 import path from "path";
 import {fileURLToPath} from "url";
@@ -7,6 +9,9 @@ import {createDirectoryIfNotExists, sleep} from "../utils.mjs";
 import '../proxyAgent.mjs';
 import NetworkMonitor from "../networkMonitor.mjs";
 import {detectBrowser} from "../utils/browserDetector.mjs";
+
+// 添加stealth插件
+puppeteerExtra.use(StealthPlugin());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,6 +22,29 @@ class HappyApiProvider {
         this.sessions = {};
         this.preferredBrowser = 'auto';
         this.networkMonitor = new NetworkMonitor();
+    }
+
+    async _launchBrowser() {
+        try {
+            const browser = await puppeteerExtra.launch({
+                headless: 'new',
+                executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-gpu',
+                    '--window-size=1920x1080',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process'
+                ]
+            });
+            return browser;
+        } catch (error) {
+            console.error('Failed to launch browser:', error);
+            throw error;
+        }
     }
 
     async init() {
@@ -31,16 +59,8 @@ class HappyApiProvider {
         createDirectoryIfNotExists(path.join(__dirname, "browser_profiles", currentUsername));
 
         try {
-            const response = await connect({
-                headless: "auto",
-                turnstile: true,
-                customConfig: {
-                    userDataDir: path.join(__dirname, "browser_profiles", currentUsername),
-                    executablePath: browserPath,
-                },
-            });
-
-            const {page, browser} = response;
+            const browser = await this._launchBrowser();
+            const page = await browser.newPage();
 
             console.log(`请在打开的浏览器窗口中手动登录 happyapi.org`);
             await page.goto("https://happyapi.org", {waitUntil: 'networkidle0'});
