@@ -18,6 +18,7 @@ import {
     REQUEST_LIMIT_DEFAULT,
     DEFAULT_TIMEOUT 
 } from './core/constants.mjs';
+import { clientState } from '../clientState.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1389,7 +1390,7 @@ class YouProvider {
 
                 if (stream) {
                     heartbeatInterval = setInterval(() => {
-                        if (!isEnding && !clientState.isClosed()) {
+                        if (!isEnding && session && !clientState.isClosed()) {
                             emitter.emit("completion", traceId, `\r`);
                         } else {
                             clearInterval(heartbeatInterval);
@@ -1452,7 +1453,7 @@ class YouProvider {
 
             if (stream) {
                 heartbeatInterval = setInterval(() => {
-                    if (!isEnding && !clientState.isClosed()) {
+                    if (!isEnding && session && !clientState.isClosed()) {
                         emitter.emit("completion", traceId, `\r`);
                     } else {
                         clearInterval(heartbeatInterval);
