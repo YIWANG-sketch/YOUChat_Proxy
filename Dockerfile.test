@@ -1,6 +1,14 @@
 FROM yunzaixi4/youchat-proxy-base:latest
 
-# Copy source code
+# Set environment variables for testing
+ENV NODE_ENV=test
+
+# Install mocha globally
+USER root
+RUN npm install -g mocha
+USER pptruser
+
+# Copy test files
 COPY . .
 
 # Run tests

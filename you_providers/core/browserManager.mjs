@@ -1,5 +1,10 @@
 import puppeteer from 'puppeteer-core';
+import puppeteerExtra from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import Logger from '../utils/logger.mjs';
+
+// 添加stealth插件
+puppeteerExtra.use(StealthPlugin());
 
 class BrowserManager {
     constructor() {
@@ -9,16 +14,18 @@ class BrowserManager {
 
     async createBrowserInstance() {
         try {
-            const browser = await puppeteer.launch({
+            const browser = await puppeteerExtra.launch({
                 headless: 'new',
-                executablePath: '/usr/bin/google-chrome',
+                executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome',
                 args: [
                     '--no-sandbox',
                     '--disable-setuid-sandbox',
                     '--disable-dev-shm-usage',
                     '--disable-accelerated-2d-canvas',
                     '--disable-gpu',
-                    '--window-size=1920x1080'
+                    '--window-size=1920x1080',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process'
                 ]
             });
             return browser;

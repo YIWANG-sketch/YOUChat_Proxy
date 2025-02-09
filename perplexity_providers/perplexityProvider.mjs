@@ -1,5 +1,7 @@
 import { EventEmitter } from "events";
-import { connect } from "puppeteer-real-browser";
+import puppeteer from 'puppeteer-core';
+import puppeteerExtra from 'puppeteer-extra';
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { v4 as uuidV4 } from "uuid";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -8,6 +10,9 @@ import '../proxyAgent.mjs';
 import { detectBrowser } from '../utils/browserDetector.mjs';
 import NetworkMonitor from '../networkMonitor.mjs';
 import io from 'socket.io-client';
+
+// 添加stealth插件
+puppeteerExtra.use(StealthPlugin());
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +23,29 @@ class PerplexityProvider {
         this.sessions = {};
         this.preferredBrowser = 'auto';
         this.networkMonitor = new NetworkMonitor();
+    }
+
+    async _launchBrowser() {
+        try {
+            const browser = await puppeteerExtra.launch({
+                headless: 'new',
+                executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome',
+                args: [
+                    '--no-sandbox',
+                    '--disable-setuid-sandbox',
+                    '--disable-dev-shm-usage',
+                    '--disable-accelerated-2d-canvas',
+                    '--disable-gpu',
+                    '--window-size=1920x1080',
+                    '--disable-web-security',
+                    '--disable-features=IsolateOrigins,site-per-process'
+                ]
+            });
+            return browser;
+        } catch (error) {
+            console.error('Failed to launch browser:', error);
+            throw error;
+        }
     }
 
     async init(config) {
@@ -62,16 +90,8 @@ class PerplexityProvider {
             createDirectoryIfNotExists(path.join(__dirname, "browser_profiles", currentUsername));
 
             try {
-                const response = await connect({
-                    headless: "auto",
-                    turnstile: true,
-                    customConfig: {
-                        userDataDir: path.join(__dirname, "browser_profiles", currentUsername),
-                        executablePath: browserPath,
-                    },
-                });
-
-                const {page, browser} = response;
+                const browser = await this._launchBrowser();
+                const page = await browser.newPage();
                 if (process.env.USE_MANUAL_LOGIN === "true") {
                     console.log(`正在为 session #${session.configIndex} 进行手动登录...`);
                     await page.goto("https://www.perplexity.ai", {timeout: timeout});
@@ -464,4 +484,3 @@ class PerplexityProvider {
 }
 
 export default PerplexityProvider;
-
