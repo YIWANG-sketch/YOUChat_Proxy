@@ -25,8 +25,17 @@ class BrowserManager {
                     '--disable-gpu',
                     '--window-size=1920x1080',
                     '--disable-web-security',
-                    '--disable-features=IsolateOrigins,site-per-process'
-                ]
+                    '--disable-features=IsolateOrigins,site-per-process',
+                    '--use-gl=swiftshader',
+                    '--no-zygote',
+                    '--single-process',
+                    '--disable-setuid-sandbox'
+                ],
+                ignoreDefaultArgs: ['--disable-extensions'],
+                env: {
+                    ...process.env,
+                    DISPLAY: ':99'
+                }
             });
             return browser;
         } catch (error) {

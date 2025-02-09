@@ -27,6 +27,10 @@ RUN apt-get update && apt-get install -y \
     libu2f-udev \
     libvulkan1 \
     xvfb \
+    dbus \
+    dbus-x11 \
+    x11-utils \
+    x11-xserver-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Chrome
@@ -36,10 +40,16 @@ RUN wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | apt-key
     && apt-get install -y google-chrome-stable \
     && rm -rf /var/lib/apt/lists/*
 
+# Set up dbus
+RUN mkdir -p /var/run/dbus \
+    && dbus-uuidgen > /var/lib/dbus/machine-id
+
 # Set environment variables
 ENV CHROME_PATH=/usr/bin/google-chrome \
     PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    NODE_ENV=production
+    NODE_ENV=production \
+    DISPLAY=:99 \
+    DBUS_SESSION_BUS_ADDRESS=unix:path=/var/run/dbus/system_bus_socket
 
 # Create app directory
 WORKDIR /app
@@ -55,7 +65,15 @@ COPY . .
 RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
     && mkdir -p /home/pptruser/Downloads \
     && chown -R pptruser:pptruser /home/pptruser \
-    && chown -R pptruser:pptruser /app
+    && chown -R pptruser:pptruser /app \
+    && chown -R pptruser:pptruser /var/run/dbus \
+    && chown -R pptruser:pptruser /var/lib/dbus
+
+# Set up Xvfb and dbus
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Run everything after as non-privileged user
 USER pptruser
+
+ENTRYPOINT ["docker-entrypoint.sh"]
