@@ -1,0 +1,7 @@
+FROM yunzaixi4/youchat-proxy-base:latest
+
+# Copy source code
+COPY . .
+
+# Run tests
+CMD ["npm", "run", "test:core"]

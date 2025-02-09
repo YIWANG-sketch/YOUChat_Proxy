@@ -11,8 +11,13 @@ import NetworkMonitor from '../networkMonitor.mjs';
 import {insertGarbledText} from './garbledText.mjs';
 import * as imageStorage from "../imageStorage.mjs";
 import Logger from './logger.mjs';
-import {clientState} from "../index.mjs";
 import SessionManager from '../sessionManager.mjs';
+import { 
+    DEFAULT_UPLOAD_FORMAT,
+    MODE_SWITCH_THRESHOLD_RANGE,
+    REQUEST_LIMIT_DEFAULT,
+    DEFAULT_TIMEOUT 
+} from './core/constants.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,18 +26,19 @@ class YouProvider {
     constructor(config) {
         this.config = config;
         this.sessions = {};
-        this.isCustomModeEnabled = process.env.USE_CUSTOM_MODE === "true"; // 是否启用自定义模式
-        this.isRotationEnabled = process.env.ENABLE_MODE_ROTATION === "true"; // 是否启用模式轮换
-        this.uploadFileFormat = process.env.UPLOAD_FILE_FORMAT || 'docx'; // 上传文件格式
-        this.enableRequestLimit = process.env.ENABLE_REQUEST_LIMIT === 'true'; // 是否启用请求次数限制
-        this.requestLimit = parseInt(process.env.REQUEST_LIMIT, 10) || 3; // 请求次数上限
+        this.extractCookie = extractCookie;
+        this.isCustomModeEnabled = process.env.USE_CUSTOM_MODE === "true";
+        this.isRotationEnabled = process.env.ENABLE_MODE_ROTATION === "true";
+        this.uploadFileFormat = process.env.UPLOAD_FILE_FORMAT || DEFAULT_UPLOAD_FORMAT;
+        this.enableRequestLimit = process.env.ENABLE_REQUEST_LIMIT === 'true';
+        this.requestLimit = parseInt(process.env.REQUEST_LIMIT, 10) || REQUEST_LIMIT_DEFAULT;
         this.networkMonitor = new NetworkMonitor();
         this.logger = new Logger();
     }
 
     getRandomSwitchThreshold(session) {
         if (session.currentMode === "default") {
-            return Math.floor(Math.random() * 3) + 1;
+            return Math.floor(Math.random() * MODE_SWITCH_THRESHOLD_RANGE) + 1;
         } else {
             const minThreshold = session.lastDefaultThreshold || 1;
             const maxThreshold = 4;
@@ -57,146 +63,38 @@ class YouProvider {
         session.switchCounter = 0;
         session.requestsInCurrentMode = 0;
         session.switchThreshold = this.getRandomSwitchThreshold(session);
+        this._logSwitchMode(session);
+    }
+
+    _logSwitchMode(session) {
         console.log(`切换到${session.currentMode}模式，将在${session.switchThreshold}次请求后再次切换`);
     }
 
     async init(config) {
         console.log(`本项目依赖Chrome或Edge浏览器，请勿关闭弹出的浏览器窗口。如果出现错误请检查是否已安装Chrome或Edge浏览器。`);
 
-        const timeout = 120000;
+        const timeout = DEFAULT_TIMEOUT;
         this.skipAccountValidation = process.env.SKIP_ACCOUNT_VALIDATION !== "true";
 
         this.sessionManager = new SessionManager(this);
         await this.sessionManager.initBrowserInstancesInBatch();
 
         if (process.env.USE_MANUAL_LOGIN === "true") {
-            console.log("当前使用手动登录模式，跳过config.mjs文件中的 cookie 验证");
-            // 获取一个浏览器实例
-            const browserInstance = this.sessionManager.browserInstances[0];
-            const page = browserInstance.page;
-            // 手动登录
-            console.log(`请在打开的浏览器窗口中手动登录 You.com`);
-            await page.goto("https://you.com", {timeout: timeout});
-            await sleep(3000); // 等待页面加载完毕
-
-            const {loginInfo, sessionCookie} = await this.waitForManualLogin(page);
-            if (sessionCookie) {
-                const email = loginInfo || sessionCookie.email || 'manual_login';
-                this.sessions[email] = {
-                    ...this.sessions['manual_login'],
-                    ...sessionCookie,
-                    valid: true,
-                    modeStatus: {
-                        default: true,
-                        custom: true,
-                    },
-                    isTeamAccount: false,
-                };
-                delete this.sessions['manual_login'];
-                console.log(`成功获取 ${email} 登录的 cookie (${sessionCookie.isNewVersion ? '新版' : '旧版'})`);
-
-                // 设置隐身模式 cookie
-                await page.setCookie(...sessionCookie);
-                this.sessionManager.setSessions(this.sessions);
-            } else {
-                console.error(`未能获取有效的登录 cookie`);
-                await browserInstance.browser.close();
-            }
+            await this._handleManualLogin();
         } else {
             // 使用配置文件中的 cookie
             for (let index = 0; index < config.sessions.length; index++) {
-                const session = config.sessions[index];
-                const {jwtSession, jwtToken, ds, dsr} = extractCookie(session.cookie);
-                if (jwtSession && jwtToken) {
-                    // 旧版cookie处理
-                    try {
-                        const jwt = JSON.parse(Buffer.from(jwtToken.split(".")[1], "base64").toString());
-                        const username = jwt.user.name;
-                        this.sessions[username] = {
-                            configIndex: index,
-                            jwtSession,
-                            jwtToken,
-                            valid: false,
-                            modeStatus: {
-                                default: true,
-                                custom: true,
-                            },
-                            isTeamAccount: false,
-                        };
-                        console.log(`已添加 #${index} ${username} (旧版cookie)`);
-                    } catch (e) {
-                        console.error(`解析第${index}个旧版cookie失败: ${e.message}`);
-                    }
-                } else if (ds) {
-                    // 新版cookie处理
-                    try {
-                        const jwt = JSON.parse(Buffer.from(ds.split(".")[1], "base64").toString());
-                        const username = jwt.email;
-                        this.sessions[username] = {
-                            configIndex: index,
-                            ds,
-                            dsr,
-                            valid: false,
-                            modeStatus: {
-                                default: true,
-                                custom: true,
-                            },
-                            isTeamAccount: false,
-                        };
-                        console.log(`已添加 #${index} ${username} (新版cookie)`);
-                        if (!dsr) {
-                            console.warn(`警告: 第${index}个cookie缺少DSR字段。`);
-                        }
-                    } catch (e) {
-                        console.error(`解析第${index}个新版cookie失败: ${e.message}`);
-                    }
-                } else {
-                    console.error(`第${index}个cookie无效，请重新获取。`);
-                    console.error(`未检测到有效的DS或stytch_session字段。`);
-                }
+                this._processSessionCookie(config.sessions[index], index);
             }
-            console.log(`已添加 ${Object.keys(this.sessions).length} 个 cookie`);
-            this.sessionManager.setSessions(this.sessions);
         }
+        console.log(`已添加 ${Object.keys(this.sessions).length} 个 cookie`);
+        this.sessionManager.setSessions(this.sessions);
         const validSessionsCount = Object.keys(this.sessions).filter(username => this.sessions[username].valid).length;
         this.isSingleSession = (validSessionsCount === 1) || (process.env.USE_MANUAL_LOGIN === "true");
         if (this.skipAccountValidation) {
-            console.log(`开始验证cookie有效性...`);
-            // 获取浏览器实例列表
-            const browserInstances = this.sessionManager.browserInstances;
-            // 创建一个账号队列
-            const accountQueue = [...Object.keys(this.sessions)];
-            // 并发验证账号
-            await this.validateAccounts(browserInstances, accountQueue);
-            console.log("订阅信息汇总：");
-            for (const [username, session] of Object.entries(this.sessions)) {
-                if (session.valid) {
-                    console.log(`{${username}:`);
-                    if (session.subscriptionInfo) {
-                        console.log(`  订阅计划: ${session.subscriptionInfo.planName}`);
-                        console.log(`  到期日期: ${session.subscriptionInfo.expirationDate}`);
-                        console.log(`  剩余天数: ${session.subscriptionInfo.daysRemaining}天`);
-                        if (session.isTeam) {
-                            console.log(`  租户ID: ${session.subscriptionInfo.tenantId}`);
-                            console.log(`  许可数量: ${session.subscriptionInfo.quantity}`);
-                            console.log(`  已使用许可: ${session.subscriptionInfo.usedQuantity}`);
-                            console.log(`  状态: ${session.subscriptionInfo.status}`);
-                            console.log(`  计费周期: ${session.subscriptionInfo.interval}`);
-                        }
-                        if (session.subscriptionInfo.cancelAtPeriodEnd) {
-                            console.log('  注意: 该订阅已设置为在当前周期结束后取消');
-                        }
-                    } else {
-                        console.warn('  账户类型: 非Pro/非Team（功能受限）');
-                    }
-                    console.log('}');
-                }
-            }
+            await this._validateAccounts();
         } else {
-            console.warn('\x1b[33m%s\x1b[0m', '警告: 已跳过账号验证。可能存在账号信息不正确或无效。');
-            for (const username in this.sessions) {
-                this.sessions[username].valid = true;
-            }
+            // 其它处理（如果有必要）
         }
         // 开始网络监控
         await this.networkMonitor.startMonitoring();
@@ -1586,6 +1484,121 @@ class YouProvider {
 
         return {completion: emitter, cancel};
     }
+
+    _processSessionCookie(sessionObj, index) {
+        const { jwtSession, jwtToken, ds, dsr } = this.extractCookie(sessionObj.cookie);
+        if (jwtSession && jwtToken) {
+            // 旧版cookie处理
+            try {
+                const jwt = JSON.parse(Buffer.from(jwtToken.split(".")[1], "base64").toString());
+                const username = jwt.user.name;
+                this.sessions[username] = {
+                    configIndex: index,
+                    jwtSession,
+                    jwtToken,
+                    valid: false,
+                    modeStatus: {
+                        default: true,
+                        custom: true
+                    },
+                    isTeamAccount: false
+                };
+                console.log(`已添加 #${index} ${username} (旧版cookie)`);
+            } catch (e) {
+                console.error(`解析第${index}个旧版cookie失败: ${e.message}`);
+            }
+        } else if (ds) {
+            // 新版cookie处理
+            try {
+                const jwt = JSON.parse(Buffer.from(ds.split(".")[1], "base64").toString());
+                const username = jwt.email;
+                this.sessions[username] = {
+                    configIndex: index,
+                    ds,
+                    dsr,
+                    valid: false,
+                    modeStatus: {
+                        default: true,
+                        custom: true
+                    },
+                    isTeamAccount: false
+                };
+                console.log(`已添加 #${index} ${username} (新版cookie)`);
+                if (!dsr) {
+                    console.warn(`警告: 第${index}个cookie缺少DSR字段。`);
+                }
+            } catch (e) {
+                console.error(`解析第${index}个新版cookie失败: ${e.message}`);
+            }
+        } else {
+            console.error(`第${index}个cookie无效，请重新获取。`);
+            console.error(`未检测到有效的DS或stytch_session字段。`);
+        }
+    }
+
+    async _handleManualLogin() {
+        console.log("当前使用手动登录模式，跳过config.mjs文件中的 cookie 验证");
+        const browserInstance = this.sessionManager.browserInstances[0];
+        const page = browserInstance.page;
+        console.log(`请在打开的浏览器窗口中手动登录 You.com`);
+        await page.goto("https://you.com", {timeout: DEFAULT_TIMEOUT});
+        await sleep(3000);
+
+        const {loginInfo, sessionCookie} = await this.waitForManualLogin(page);
+        if (sessionCookie) {
+            const email = loginInfo || sessionCookie.email || 'manual_login';
+            this.sessions[email] = {
+                ...this.sessions['manual_login'],
+                ...sessionCookie,
+                valid: true,
+                modeStatus: {
+                    default: true,
+                    custom: true,
+                },
+                isTeamAccount: false,
+            };
+            delete this.sessions['manual_login'];
+            console.log(`成功获取 ${email} 登录的 cookie (${sessionCookie.isNewVersion ? '新版' : '旧版'})`);
+
+            await page.setCookie(...sessionCookie);
+            this.sessionManager.setSessions(this.sessions);
+        } else {
+            console.error(`未能获取有效的登录 cookie`);
+            await browserInstance.browser.close();
+        }
+    }
+
+    async _validateAccounts() {
+        console.log(`开始验证cookie有效性...`);
+        const browserInstances = this.sessionManager.browserInstances;
+        const accountQueue = [...Object.keys(this.sessions)];
+        await this.validateAccounts(browserInstances, accountQueue);
+        console.log("订阅信息汇总：");
+        for (const [username, session] of Object.entries(this.sessions)) {
+            if (session.valid) {
+                console.log(`{${username}:`);
+                if (session.subscriptionInfo) {
+                    console.log(`  订阅计划: ${session.subscriptionInfo.planName}`);
+                    console.log(`  到期日期: ${session.subscriptionInfo.expirationDate}`);
+                    console.log(`  剩余天数: ${session.subscriptionInfo.daysRemaining}天`);
+                    if (session.isTeam) {
+                        console.log(`  租户ID: ${session.subscriptionInfo.tenantId}`);
+                        console.log(`  许可数量: ${session.subscriptionInfo.quantity}`);
+                        console.log(`  已使用许可: ${session.subscriptionInfo.usedQuantity}`);
+                        console.log(`  状态: ${session.subscriptionInfo.status}`);
+                        console.log(`  计费周期: ${session.subscriptionInfo.interval}`);
+                    }
+                    if (session.subscriptionInfo.cancelAtPeriodEnd) {
+                        console.log('  注意: 该订阅已设置为在当前周期结束后取消');
+                    }
+                } else {
+                    console.warn('  账户类型: 非Pro/非Team（功能受限）');
+                }
+                console.log('}');
+            }
+        }
+    }
+
 }
 
 export default YouProvider;

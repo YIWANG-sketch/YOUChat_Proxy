@@ -9,7 +9,11 @@ const __dirname = path.dirname(__filename);
 class Logger {
     constructor() {
         this.logMutex = new Mutex();
-        this.logFilePath = path.join(__dirname, 'requests.log');
+        if (process.env.NODE_ENV === 'test') {
+            this.logFilePath = path.join(process.cwd(), 'requests.log');
+        } else {
+            this.logFilePath = path.join(__dirname, 'requests.log');
+        }
         this.statistics = {};
         this.monthStart = this.getMonthStart();
         this.today = this.getToday();

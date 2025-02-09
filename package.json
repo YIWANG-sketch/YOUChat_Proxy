@@ -4,17 +4,23 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "test:core": "mocha --recursive test/*.test.mjs",
+    "test:docker": "docker build -t youchat-proxy-test -f Dockerfile.test . && docker run --rm youchat-proxy-test",
+    "test:docker:build": "docker build -t youchat-proxy-test -f Dockerfile.test .",
+    "test:docker:run": "docker run --rm youchat-proxy-test",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
+  "devDependencies": {
+    "mocha": "^10.2.0"
+  },
   "license": "ISC",
   "dependencies": {
     "cookie": "^0.6.0",
     "docx": "^8.5.0",
     "express": "^4.19.2",
     "form-data": "^4.0.0",
-    "puppeteer-real-browser": "1.2.22",
-    "puppeteer-core": "^23.10.4",
+    "puppeteer-core": "^21.11.0",
     "uuid": "^9.0.1",
     "localtunnel": "^2.0.2",
     "socks-proxy-agent": "^8.0.4",

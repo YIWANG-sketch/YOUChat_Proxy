@@ -4,18 +4,11 @@ import { Mutex } from 'async-mutex';
 import { detectBrowser } from './utils/browserDetector.mjs';
 import { createDirectoryIfNotExists } from './utils.mjs';
 import { fileURLToPath } from 'url';
+import puppeteer from 'puppeteer-core';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const isHeadless = process.env.HEADLESS_BROWSER === 'true' && process.env.USE_MANUAL_LOGIN !== 'true';
-let puppeteerModule;
-let connect;
-if (isHeadless === false) {
-    puppeteerModule = await import('puppeteer-real-browser');
-    connect = puppeteerModule.connect;
-} else {
-    puppeteerModule = await import('puppeteer-core');
-}
 
 // 会话自动释放时间（秒）
 const SESSION_LOCK_TIMEOUT = parseInt(process.env.SESSION_LOCK_TIMEOUT || '0', 10);
@@ -168,39 +161,20 @@ class SessionManager {
 
     async launchSingleBrowser(browserId, userDataDir, browserPath) {
         let browser, page;
-        if (isHeadless === false) {
-            // 使用 puppeteer-real-browser
-            const response = await connect({
-                headless: 'auto',
-                turnstile: true,
-                customConfig: {
-                    userDataDir: userDataDir,
-                    executablePath: browserPath,
-                    args: [
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--remote-debugging-address=::',
-                    ],
-                },
-            });
-            browser = response.browser;
-            page = response.page;
-        } else {
-            // 使用 puppeteer-core
-            browser = await puppeteerModule.launch({
-                headless: this.isHeadless,
-                executablePath: browserPath,
-                userDataDir: userDataDir,
-                args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-gpu',
-                    '--disable-dev-shm-usage',
-                    '--remote-debugging-port=0',
-                ],
-            });
-            page = await browser.newPage();
-        }
+
+        browser = await puppeteer.launch({
+            headless: this.isHeadless,
+            executablePath: browserPath,
+            userDataDir: userDataDir,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-gpu',
+                '--disable-dev-shm-usage',
+                '--remote-debugging-port=0',
+            ],
+        });
+        page = await browser.newPage();
 
         return {
             id: browserId,
