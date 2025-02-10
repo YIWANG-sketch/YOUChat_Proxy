@@ -1,8 +1,15 @@
 import YouProvider from './you_providers/youProvider.mjs';
 import PerplexityProvider from './perplexity_providers/perplexityProvider.mjs';
 import HappyApiProvider from './happyapi_providers/happyApi.mjs';
-import {config as youConfig} from './config.mjs';
-import {config as perplexityConfig} from './perplexityConfig.mjs';
+import path from 'path';
+
+// 获取配置文件路径
+function getConfigPath() {
+    return process.platform === 'linux' ? '/app/config/config.mjs' : path.join(process.cwd(), 'config.mjs');
+}
+
+const configModule = await import(getConfigPath());
+const config = configModule.config;
 
 class ProviderManager {
     constructor() {
@@ -11,10 +18,10 @@ class ProviderManager {
 
         switch (activeProvider) {
             case 'you':
-                this.provider = new YouProvider(youConfig);
+                this.provider = new YouProvider(config);
                 break;
             case 'perplexity':
-                this.provider = new PerplexityProvider(perplexityConfig);
+                this.provider = new PerplexityProvider(config);
                 break;
             case 'happyapi':
                 this.provider = new HappyApiProvider();

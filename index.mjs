@@ -57,18 +57,23 @@ const modelMappping = {
     "o1-preview": "openai_o1",
 };
 
+// 获取配置文件路径
+function getConfigPath() {
+    return process.platform === 'linux' ? '/app/config/config.mjs' : path.join(process.cwd(), 'config.mjs');
+}
+
 // import config.mjs
 let config;
 try {
-    // 根据操作系统选择配置文件路径
-    const configPath = process.platform === 'linux' ? '/app/config/config.mjs' : './config.mjs';
+    const configPath = getConfigPath();
+    const defaultConfigPath = path.join(process.cwd(), 'config.mjs');
     
     // 只在 Linux 系统下设置权限和使用特殊目录
     if (process.platform === 'linux') {
         try {
             // 如果配置文件不存在，从当前目录复制
-            if (!fs.existsSync(configPath) && fs.existsSync('./config.mjs')) {
-                fs.copyFileSync('./config.mjs', configPath);
+            if (!fs.existsSync(configPath) && fs.existsSync(defaultConfigPath)) {
+                fs.copyFileSync(defaultConfigPath, configPath);
             }
             // 确保配置文件存在
             if (!fs.existsSync(configPath)) {

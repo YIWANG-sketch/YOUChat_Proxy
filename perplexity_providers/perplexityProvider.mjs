@@ -61,7 +61,7 @@ class PerplexityProvider {
                 configIndex: 0,
                 valid: false,
             };
-            console.log("当前使用手动登录模式，跳过config.mjs文件中的 cookie 验证");
+            console.log("当前使用手动登录模式，跳过配置文件中的 cookie 验证");
         } else {
             // 使用配置文件中的 cookie
             for (let index = 0; index < config.sessions.length; index++) {

@@ -23,6 +23,11 @@ import { clientState } from '../clientState.mjs';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// 获取配置文件路径
+function getConfigPath() {
+    return process.platform === 'linux' ? '/app/config/config.mjs' : path.join(process.cwd(), 'config.mjs');
+}
+
 class YouProvider {
     constructor(config) {
         this.config = config;
@@ -707,7 +712,7 @@ class YouProvider {
             if (!this.config.user_chat_mode_id[username]) {
                 // 为当前用户创建新记录
                 this.config.user_chat_mode_id[username] = {};
-                fs.writeFileSync("./config.mjs", "export const config = " + JSON.stringify(this.config, null, 4));
+                fs.writeFileSync(getConfigPath(), "export const config = " + JSON.stringify(this.config, null, 4));
                 console.log(`Created new record for user: ${username}`);
             }
 
@@ -741,7 +746,7 @@ class YouProvider {
                 if (userChatMode.chat_mode_id) {
                     this.config.user_chat_mode_id[username][proxyModel] = userChatMode.chat_mode_id;
                     // 写回 config
-                    fs.writeFileSync("./config.mjs", "export const config = " + JSON.stringify(this.config, null, 4));
+                    fs.writeFileSync(getConfigPath(), "export const config = " + JSON.stringify(this.config, null, 4));
                     console.log(`Created new chat mode for user ${username} and model ${proxyModel}`);
                 } else {
                     if (userChatMode.error) console.log(userChatMode.error);
