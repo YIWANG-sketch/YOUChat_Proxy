@@ -66,7 +66,7 @@ try {
             fs.chmodSync('./config.mjs', 0o777);
             console.log('Successfully set permissions for config.mjs (Linux only)');
         } catch (err) {
-            console.log('Note: config.mjs may not exist yet, will be created with proper permissions');
+            console.log(err);
         }
     }
 

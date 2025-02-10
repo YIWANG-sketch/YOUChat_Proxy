@@ -6,6 +6,7 @@ COPY . /app/
 
 WORKDIR /app
 
+USER root
 # Expose the port your app runs on
 EXPOSE 8080
 
