@@ -60,17 +60,28 @@ const modelMappping = {
 // import config.mjs
 let config;
 try {
-    // 只在 Linux 系统下设置权限
+    // 根据操作系统选择配置文件路径
+    const configPath = process.platform === 'linux' ? '/app/config/config.mjs' : './config.mjs';
+    
+    // 只在 Linux 系统下设置权限和使用特殊目录
     if (process.platform === 'linux') {
         try {
-            fs.chmodSync('./config.mjs', 0o777);
-            console.log('Successfully set permissions for config.mjs (Linux only)');
+            // 如果配置文件不存在，从当前目录复制
+            if (!fs.existsSync(configPath) && fs.existsSync('./config.mjs')) {
+                fs.copyFileSync('./config.mjs', configPath);
+            }
+            // 确保配置文件存在
+            if (!fs.existsSync(configPath)) {
+                fs.writeFileSync(configPath, 'export const config = {};');
+            }
+            fs.chmodSync(configPath, 0o777);
+            console.log('Successfully set up config.mjs in config directory (Linux)');
         } catch (err) {
             console.log(err);
         }
     }
 
-    const configModule = await import("./config.mjs");
+    const configModule = await import(configPath);
     config = configModule.config;
 } catch (e) {
     console.error(e);
