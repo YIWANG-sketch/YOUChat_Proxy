@@ -59,6 +59,17 @@ const modelMappping = {
 // import config.mjs
 let config;
 try {
+    // 只在 Linux 系统下设置权限
+    if (process.platform === 'linux') {
+        try {
+            const fs = require('fs');
+            fs.chmodSync('./config.mjs', 0o777);
+            console.log('Successfully set permissions for config.mjs (Linux only)');
+        } catch (err) {
+            console.log('Note: config.mjs may not exist yet, will be created with proper permissions');
+        }
+    }
+
     const configModule = await import("./config.mjs");
     config = configModule.config;
 } catch (e) {
