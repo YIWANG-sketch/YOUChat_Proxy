@@ -4,6 +4,8 @@ FROM yunzaixi4/youchat-proxy-base:latest
 # Copy the application code
 COPY . .
 
+RUN chmod -R 777 /app
+
 # Expose the port your app runs on
 EXPOSE 8080
 
