@@ -10,6 +10,7 @@ import fetch from 'node-fetch';
 import path from 'path';
 import geoip from 'geoip-lite';
 import RequestLogger from './requestLogger.mjs';
+import fs from 'fs';
 
 const app = express();
 const port = process.env.PORT || 8080;
@@ -62,7 +63,6 @@ try {
     // 只在 Linux 系统下设置权限
     if (process.platform === 'linux') {
         try {
-            const fs = require('fs');
             fs.chmodSync('./config.mjs', 0o777);
             console.log('Successfully set permissions for config.mjs (Linux only)');
         } catch (err) {
