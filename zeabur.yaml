@@ -1,0 +1,43 @@
+# yaml-language-server: $schema=https://schema.zeabur.app/template.json
+apiVersion: zeabur.com/v1
+kind: Template
+metadata:
+    name: youchat-proxy
+spec:
+    description: Exported from project 67aa84afb98e120b5b0ab8cc
+    services:
+        - name: youchat-proxy
+          icon: https://service-icons.zeabur.com/git/docker/default.svg
+          template: PREBUILT_V2
+          spec:
+            source:
+                source: GITHUB
+                repo: 929484417
+                branch: bypass-cf
+                rootDirectory: /
+            ports:
+                - id: web
+                  port: 8080
+                  type: HTTP
+            env:
+                ENABLE_MODE_ROTATION:
+                    default: "false"
+                    expose: false
+                PORT:
+                    default: ${WEB_PORT}
+                    expose: false
+                USE_CUSTOM_MODE:
+                    default: "false"
+                    expose: false
+            configs:
+                - path: /app/config.mjs
+                  template: |-
+                    export const config = {
+                        "sessions": [
+                            {
+                                "cookie": `...`,
+                            }
+                        ]
+                    }
+                  permission: 493
+                  envsubst: null
