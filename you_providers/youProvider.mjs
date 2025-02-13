@@ -917,6 +917,7 @@ class YouProvider {
             } else {
                 console.log(`Messages uploaded successfully: ${randomFileName}`);
             }
+            //tracking upload error
             if (uploadedFile.error) throw new Error(uploadedFile.error);
         }
 
