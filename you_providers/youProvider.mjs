@@ -572,7 +572,7 @@ class YouProvider {
                             modeSwitched = false
                         }) {
         // 打印完整的messages内容
-        console.log('Complete messages:', JSON.stringify(messages, null, 2));
+        //console.log('Complete messages:', JSON.stringify(messages, null, 2));
 
         if (this.networkMonitor.isNetworkBlocked()) {
             throw new Error("网络异常，请稍后再试");

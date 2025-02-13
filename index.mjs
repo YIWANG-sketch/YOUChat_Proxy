@@ -169,6 +169,34 @@ app.post("/v1/chat/completions", OpenAIApiKeyAuth, (req, res) => {
             return;
         }
 
+        //输出jsonBody的内容,并保存在/jsonHistory目录中
+        console.log("Received request with parameters:", jsonBody);
+
+        // 确保 jsonHistory 目录存在
+        const historyDir = path.join(process.cwd(), 'jsonHistory');
+        if (!fs.existsSync(historyDir)) {
+            fs.mkdirSync(historyDir, { recursive: true });
+        }
+
+        // 生成文件名（使用时间戳和随机数）
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const filename = `request_${timestamp}_${randomStr}.json`;
+
+        try {
+            // 保存请求内容
+            fs.writeFileSync(
+                path.join(historyDir, filename),
+                JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    request: jsonBody
+                }, null, 2)
+            );
+            console.log(`Request saved to: ${filename}`);
+        } catch (error) {
+            console.error(`Error saving request history: ${error.message}`);
+        }
+
         // 规范化消息
         jsonBody.messages = await openaiNormalizeMessages(jsonBody.messages);
 
@@ -584,6 +612,34 @@ app.post("/v1/messages", AnthropicApiKeyAuth, (req, res) => {
         } catch (error) {
             res.status(400).json({error: {code: 400, message: "Invalid JSON"}});
             return;
+        }
+
+        //输出jsonBody的内容,并保存在/jsonHistory目录中
+        console.log("Received request with parameters:", jsonBody);
+
+        // 确保 jsonHistory 目录存在
+        const historyDir = path.join(process.cwd(), 'jsonHistory');
+        if (!fs.existsSync(historyDir)) {
+            fs.mkdirSync(historyDir, { recursive: true });
+        }
+
+        // 生成文件名（使用时间戳和随机数）
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const filename = `request_${timestamp}_${randomStr}.json`;
+
+        try {
+            // 保存请求内容
+            fs.writeFileSync(
+                path.join(historyDir, filename),
+                JSON.stringify({
+                    timestamp: new Date().toISOString(),
+                    request: jsonBody
+                }, null, 2)
+            );
+            console.log(`Request saved to: ${filename}`);
+        } catch (error) {
+            console.error(`Error saving request history: ${error.message}`);
         }
 
         // 处理消息格式
