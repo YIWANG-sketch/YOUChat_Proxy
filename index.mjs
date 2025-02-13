@@ -168,8 +168,8 @@ app.post("/v1/chat/completions", OpenAIApiKeyAuth, (req, res) => {
             res.status(400).json({error: {code: 400, message: "Invalid JSON"}});
             return;
         }
-        var max_token = jsonBody.max_token;
-        console.log("Max token:", max_token);
+        var max_tokens = jsonBody.max_tokens;
+        console.log("max_tokens:", max_tokens);
 
         // 确保 jsonHistory 目录存在
         const historyDir = path.join(process.cwd(), 'jsonHistory');
@@ -197,7 +197,7 @@ app.post("/v1/chat/completions", OpenAIApiKeyAuth, (req, res) => {
         }
 
         // 规范化消息
-        jsonBody.messages = await openaiNormalizeMessages(jsonBody.messages,max_token);
+        jsonBody.messages = await openaiNormalizeMessages(jsonBody.messages,max_tokens);
 
         console.log("message length: " + jsonBody.messages.length);
 
