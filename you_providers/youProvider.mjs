@@ -571,16 +571,8 @@ class YouProvider {
                             useCustomMode = false,
                             modeSwitched = false
                         }) {
-
-        //追踪酒馆发送的请求信息
-        console.log('Received request with parameters:', {
-            username,
-            messageCount: messages.length,
-            stream,
-            proxyModel,
-            useCustomMode,
-            modeSwitched
-        });
+        // 打印完整的messages内容
+        console.log('Complete messages:', JSON.stringify(messages, null, 2));
 
         if (this.networkMonitor.isNetworkBlocked()) {
             throw new Error("网络异常，请稍后再试");
