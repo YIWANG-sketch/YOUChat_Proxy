@@ -44,20 +44,15 @@ class YouProvider {
 
     getRandomSwitchThreshold(session) {
         if (session.currentMode === "default") {
-            return Math.floor(Math.random() * MODE_SWITCH_THRESHOLD_RANGE) + 1;
+            const threshold = Math.floor(Math.random() * (MODE_SWITCH_THRESHOLD_RANGE[1] - MODE_SWITCH_THRESHOLD_RANGE[0] + 1)) + MODE_SWITCH_THRESHOLD_RANGE[0];
+            console.log(`[Mode Switch] Set new threshold for default mode: ${threshold} requests`);
+            return threshold;
         } else {
-            const minThreshold = session.lastDefaultThreshold || 1;
-            const maxThreshold = 4;
-            let range = maxThreshold - minThreshold;
-
-            if (range <= 0) {
-                session.lastDefaultThreshold = 1;
-                range = maxThreshold - session.lastDefaultThreshold;
-            }
-
-            // 范围至少 1
-            const adjustedRange = range > 0 ? range : 1;
-            return Math.floor(Math.random() * adjustedRange) + session.lastDefaultThreshold;
+            const minThreshold = MODE_SWITCH_THRESHOLD_RANGE[0];
+            const maxThreshold = MODE_SWITCH_THRESHOLD_RANGE[1];
+            const threshold = Math.floor(Math.random() * (maxThreshold - minThreshold + 1)) + minThreshold;
+            console.log(`[Mode Switch] Set new threshold for custom mode: ${threshold} requests`);
+            return threshold;
         }
     }
 
