@@ -571,6 +571,17 @@ class YouProvider {
                             useCustomMode = false,
                             modeSwitched = false
                         }) {
+
+        //追踪酒馆发送的请求信息
+        console.log('Received request with parameters:', {
+            username,
+            messageCount: messages.length,
+            stream,
+            proxyModel,
+            useCustomMode,
+            modeSwitched
+        });
+
         if (this.networkMonitor.isNetworkBlocked()) {
             throw new Error("网络异常，请稍后再试");
         }
@@ -918,9 +929,7 @@ class YouProvider {
                 console.log(`Messages uploaded successfully: ${randomFileName}`);
             }
             //tracking upload error
-            if (uploadedFile.error){
-                console.error("检测到you.com文件上传发生错误,请修改破限或文件上传类型重试");
-            }
+            if (uploadedFile.error) throw new Error(uploadedFile.error);
         }
 
         let msgid = uuidV4();
