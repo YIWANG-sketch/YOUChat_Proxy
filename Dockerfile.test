@@ -6,7 +6,6 @@ ENV NODE_ENV=test
 # Install mocha globally
 USER root
 RUN npm install -g mocha
-USER pptruser
 
 # Copy test files
 COPY . .

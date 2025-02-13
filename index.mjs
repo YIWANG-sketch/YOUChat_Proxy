@@ -168,9 +168,8 @@ app.post("/v1/chat/completions", OpenAIApiKeyAuth, (req, res) => {
             res.status(400).json({error: {code: 400, message: "Invalid JSON"}});
             return;
         }
-
-        //输出jsonBody的内容,并保存在/jsonHistory目录中
-        console.log("Received request with parameters:", jsonBody);
+        var max_token = jsonBody.max_token;
+        console.log("Max token:", max_token);
 
         // 确保 jsonHistory 目录存在
         const historyDir = path.join(process.cwd(), 'jsonHistory');
@@ -198,7 +197,7 @@ app.post("/v1/chat/completions", OpenAIApiKeyAuth, (req, res) => {
         }
 
         // 规范化消息
-        jsonBody.messages = await openaiNormalizeMessages(jsonBody.messages);
+        jsonBody.messages = await openaiNormalizeMessages(jsonBody.messages,max_token);
 
         console.log("message length: " + jsonBody.messages.length);
 
@@ -493,9 +492,18 @@ app.post("/v1/chat/completions", OpenAIApiKeyAuth, (req, res) => {
 });
 
 // Helper function: Normalize messages
-async function openaiNormalizeMessages(messages) {
+async function openaiNormalizeMessages(messages, max_token) {
     let normalizedMessages = [];
     let currentSystemMessage = "";
+    let messageCount = 0;
+
+    // 在开头添加 max_token 信息
+    if (max_token) {
+        normalizedMessages.push({
+            role: 'system',
+            content: `-max_token:${max_token}`
+        });
+    }
 
     for (let message of messages) {
         if (message.role === 'system') {
@@ -508,6 +516,7 @@ async function openaiNormalizeMessages(messages) {
             if (currentSystemMessage) {
                 normalizedMessages.push({role: 'system', content: currentSystemMessage});
                 currentSystemMessage = "";
+                messageCount++;
             }
 
             // 检查消息内容
@@ -534,17 +543,37 @@ async function openaiNormalizeMessages(messages) {
                 }
 
                 normalizedMessages.push({role: message.role, content: textContent});
+                messageCount++;
             } else if (typeof message.content === 'string') {
                 normalizedMessages.push(message);
+                messageCount++;
             } else {
                 console.warn('未知的消息内容格式:', message.content);
                 normalizedMessages.push(message);
+                messageCount++;
+            }
+
+            // 每10条消息后插入 max_token 信息
+            if (max_token && messageCount % 10 === 0) {
+                normalizedMessages.push({
+                    role: 'system',
+                    content: `-max_token:${max_token}`
+                });
             }
         }
     }
 
     if (currentSystemMessage) {
         normalizedMessages.push({role: 'system', content: currentSystemMessage});
+        messageCount++;
+    }
+
+    // 在结尾添加 max_token 信息（如果最后一组不满10条也添加）
+    if (max_token && messageCount % 10 !== 0) {
+        normalizedMessages.push({
+            role: 'system',
+            content: `-max_token:${max_token}`
+        });
     }
 
     return normalizedMessages;
