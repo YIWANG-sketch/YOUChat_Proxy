@@ -918,7 +918,9 @@ class YouProvider {
                 console.log(`Messages uploaded successfully: ${randomFileName}`);
             }
             //tracking upload error
-            if (uploadedFile.error) throw new Error(uploadedFile.error);
+            if (uploadedFile.error){
+                console.error("检测到you.com文件上传发生错误,请修改破限或文件上传类型重试");
+            }
         }
 
         let msgid = uuidV4();
