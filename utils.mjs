@@ -25,17 +25,19 @@ function extractCookie(cookies) {
     let jwtToken = null;
     let ds = null;
     let dsr = null;
+    let uuid = null;
 
     cookies = cookie.parse(cookies);
     if (cookies["stytch_session"]) jwtSession = cookies["stytch_session"];
     if (cookies["stytch_session_jwt"]) jwtToken = cookies["stytch_session_jwt"];
     if (cookies["DS"]) ds = cookies["DS"];
     if (cookies["DSR"]) dsr = cookies["DSR"];
+    if (cookies["uuid_guest"]) uuid = cookies["uuid_guest"];
 
-    return { jwtSession, jwtToken, ds, dsr };
+    return { jwtSession, jwtToken, ds, dsr, uuid};
 }
 
-function getSessionCookie(jwtSession, jwtToken, ds, dsr) {
+function getSessionCookie(jwtSession, jwtToken, ds, dsr, uuid) {
     let sessionCookie = [];
 
     // 处理旧版 cookie
@@ -107,6 +109,18 @@ function getSessionCookie(jwtSession, jwtToken, ds, dsr) {
             httpOnly: false,
             secure: true,
             sameSite: "Lax",
+        });
+    }
+    console.log(uuid);
+    if (uuid) {
+        sessionCookie.push({
+            name: "uuid_guest",
+            value: uuid,
+            domain: "you.com",
+            path: "/",
+            expires: 1800000000,
+            httpOnly: false,
+            secure: true,
         });
     }
 

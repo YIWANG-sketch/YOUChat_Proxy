@@ -110,7 +110,7 @@ class YouProvider {
             // 使用配置文件中的 cookie
             for (let index = 0; index < config.sessions.length; index++) {
                 const session = config.sessions[index];
-                const {jwtSession, jwtToken, ds, dsr} = extractCookie(session.cookie);
+                const {jwtSession, jwtToken, ds, dsr, uuid} = extractCookie(session.cookie);
                 if (jwtSession && jwtToken) {
                     // 旧版cookie处理
                     try {
@@ -140,6 +140,7 @@ class YouProvider {
                             configIndex: index,
                             ds,
                             dsr,
+                            uuid,
                             valid: false,
                             modeStatus: {
                                 default: true,
@@ -283,7 +284,8 @@ class YouProvider {
                         session.jwtSession,
                         session.jwtToken,
                         session.ds,
-                        session.dsr
+                        session.dsr,
+                        session.uuid
                     ));
                     await page.goto("https://you.com", {
                         timeout,
